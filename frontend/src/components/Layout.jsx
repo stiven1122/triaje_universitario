@@ -15,16 +15,24 @@ export default function Layout() {
     <div className="app">
       <aside className="sidebar">
         <div className="sidebar__marca">
-          <span className="logo"><IconCorreos /></span>
-          <div>
-            <strong>Triaje</strong>
-            <small>Correos universitarios</small>
+          <div className="marca-logo">
+            <img src="/brand/logo-uniautonoma.png" alt="Uniautónoma del Cauca" />
+          </div>
+          <div className="sidebar__sistema">
+            <span>Triaje de correos</span>
+            <small>Coordinación</small>
           </div>
         </div>
 
         <nav className="sidebar__nav" aria-label="Principal">
           {ITEMS.map(({ to, etiqueta, icono: Icono, fin }) => (
-            <NavLink key={to} to={to} end={fin} className={({ isActive }) => `nav-item${isActive ? ' nav-item--activo' : ''}`}>
+            <NavLink
+              key={to}
+              to={to}
+              end={fin}
+              aria-label={etiqueta}
+              className={({ isActive }) => `nav-item${isActive ? ' nav-item--activo' : ''}`}
+            >
               <Icono />
               <span>{etiqueta}</span>
             </NavLink>
@@ -41,6 +49,12 @@ export default function Layout() {
             <IconLogout />
           </button>
         </div>
+
+        <p className="sidebar__nota">
+          Universidad Autónoma del Cauca
+          <br />
+          Vigilado Mineducación
+        </p>
       </aside>
 
       <main className="contenido">

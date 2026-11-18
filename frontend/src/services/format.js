@@ -7,6 +7,16 @@ export function fechaHora(valor) {
   return d.toLocaleString('es-CO', { timeZone: ZONA, day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
+/** Versión compacta para tablas: 18 nov 2026 · 08:10 */
+export function fechaCorta(valor) {
+  if (!valor) return '—';
+  const d = new Date(valor);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d
+    .toLocaleString('es-CO', { timeZone: ZONA, day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })
+    .replace(',', ' ·');
+}
+
 export function soloFecha(valor) {
   if (!valor) return '—';
   // fecha_realizacion llega como AAAA-MM-DD: se interpreta sin desfase horario

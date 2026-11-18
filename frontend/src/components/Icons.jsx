@@ -13,3 +13,5 @@ export const IconInbox = (p) => (<svg {...base} {...p}><path d="M3 13l3-8h12l3 8
 export const IconLogout = (p) => (<svg {...base} {...p}><path d="M15 4h3a2 2 0 012 2v12a2 2 0 01-2 2h-3" /><path d="M10 8l-4 4 4 4M6 12h11" /></svg>);
 export const IconSearch = (p) => (<svg {...base} {...p}><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg>);
 export const IconClose = (p) => (<svg {...base} {...p}><path d="M6 6l12 12M18 6L6 18" /></svg>);
+export const IconEye = (p) => (<svg {...base} {...p}><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" /><circle cx="12" cy="12" r="3" /></svg>);
+export const IconEyeOff = (p) => (<svg {...base} {...p}><path d="M4 4l16 16" /><path d="M9.9 5.9A9.5 9.5 0 0112 5.5c6 0 9.5 6.5 9.5 6.5a17 17 0 01-3.1 3.9M6.3 7.9A17.2 17.2 0 002.5 12S6 18.5 12 18.5c1.2 0 2.3-.2 3.3-.7" /><path d="M9.9 9.9a3 3 0 004.2 4.2" /></svg>);

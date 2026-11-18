@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { api } from '../services/api.js';
-import { fechaHora } from '../services/format.js';
+import { fechaCorta } from '../services/format.js';
 import { useListado } from '../hooks/useListado.js';
 import Badge from '../components/Badge.jsx';
 import DetallePanel from '../components/DetallePanel.jsx';
@@ -32,6 +32,7 @@ export default function Correos() {
     <>
       <header className="pagina__cabecera">
         <div>
+          <span className="pagina__eyebrow">Bandeja institucional</span>
           <h1>Correos</h1>
           <p className="muted">Todos los mensajes recibidos y clasificados por n8n</p>
         </div>
@@ -49,20 +50,21 @@ export default function Correos() {
 
         {!error && data.length > 0 && (
           <div className={`tabla-contenedor${cargando ? ' tabla-contenedor--cargando' : ''}`}>
-            <table className="tabla">
+            <table className="tabla tabla--correos">
               <thead>
                 <tr>
-                  <th>Remitente</th><th>Correo</th><th>Asunto</th><th>Rol · Tipo</th><th>Recepción</th><th>Categoría</th><th>Prioridad</th><th>Estado</th>
+                  <th>Remitente</th><th>Asunto</th><th>Recepción</th><th>Categoría</th><th>Prioridad</th><th>Estado</th>
                 </tr>
               </thead>
               <tbody>
                 {data.map((c) => (
                   <tr key={c.id} tabIndex={0} onClick={() => setAbierto(c.id)} onKeyDown={(e) => { if (e.key === 'Enter') setAbierto(c.id); }}>
-                    <td><strong>{c.remitente_nombre || '—'}</strong></td>
-                    <td className="muted">{c.remitente_email}</td>
-                    <td>{c.asunto}</td>
-                    <td>{c.rol_remitente ? <><strong>{c.rol_remitente}</strong><div className="muted">{c.tipo_correo || '—'}</div></> : <span className="muted">—</span>}</td>
-                    <td className="nowrap">{fechaHora(c.fecha_recepcion)}</td>
+                    <td><strong>{c.remitente_nombre || '—'}</strong><div className="muted">{c.remitente_email}</div></td>
+                    <td>
+                      <strong>{c.asunto}</strong>
+                      <div className="muted">{c.rol_remitente ? `${c.rol_remitente} · ${c.tipo_correo || '—'}` : '—'}</div>
+                    </td>
+                    <td className="nowrap">{fechaCorta(c.fecha_recepcion)}</td>
                     <td><Badge valor={c.categoria} /></td>
                     <td><Badge valor={c.prioridad} /></td>
                     <td><Badge valor={c.solicitud ? c.solicitud.estado : (c.decision_triaje === 'Descartado' ? 'Descartado' : 'Sin solicitud')} titulo={c.motivo_triaje || undefined} /></td>

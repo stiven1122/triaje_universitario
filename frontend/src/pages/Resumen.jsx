@@ -67,6 +67,7 @@ export default function Resumen() {
     <>
       <header className="pagina__cabecera">
         <div>
+          <span className="pagina__eyebrow">Panel general</span>
           <h1>Resumen</h1>
           <p className="muted">Estado actual de los correos y solicitudes recibidos</p>
         </div>

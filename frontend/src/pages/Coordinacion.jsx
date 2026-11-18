@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { api } from '../services/api.js';
-import { fechaHora } from '../services/format.js';
+import { fechaCorta } from '../services/format.js';
 import { useListado } from '../hooks/useListado.js';
 import Badge from '../components/Badge.jsx';
 import DetallePanel from '../components/DetallePanel.jsx';
@@ -34,6 +34,7 @@ export default function Coordinacion() {
     <>
       <header className="pagina__cabecera">
         <div>
+          <span className="pagina__eyebrow">Gestión de solicitudes</span>
           <h1>Coordinación</h1>
           <p className="muted">Administra las solicitudes recibidas por correo</p>
         </div>
@@ -59,7 +60,7 @@ export default function Coordinacion() {
 
         {!error && data.length > 0 && (
           <div className={`tabla-contenedor${cargando ? ' tabla-contenedor--cargando' : ''}`}>
-            <table className="tabla">
+            <table className="tabla tabla--solicitudes">
               <thead>
                 <tr>
                   <th>Solicitante</th><th>Asunto / Proyecto</th><th>Recibido</th><th>Categoría</th><th>Prioridad</th><th>Estado</th>
@@ -70,7 +71,7 @@ export default function Coordinacion() {
                   <tr key={s.id} tabIndex={0} onClick={() => setAbierta(s.id)} onKeyDown={(e) => { if (e.key === 'Enter') setAbierta(s.id); }}>
                     <td><strong>{s.correos.remitente_nombre || '—'}</strong><div className="muted">{s.correos.remitente_email}</div></td>
                     <td><strong>{s.nombre_proyecto || s.correos.asunto}</strong>{s.nombre_proyecto && <div className="muted">{s.correos.asunto}</div>}</td>
-                    <td className="nowrap">{fechaHora(s.correos.fecha_recepcion)}</td>
+                    <td className="nowrap">{fechaCorta(s.correos.fecha_recepcion)}</td>
                     <td><Badge valor={s.correos.categoria} /></td>
                     <td><Badge valor={s.correos.prioridad} /></td>
                     <td><Badge valor={s.estado} /></td>
