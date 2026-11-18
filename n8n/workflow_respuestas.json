@@ -1,0 +1,548 @@
+{
+  "name": "Triaje · 2 Respuestas administrativas",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Workflow 2 · Respuestas administrativas\nEl backend llama a este webhook cuando el administrador aprueba, rechaza o pide información. n8n envía el correo real con Gmail (en el mismo hilo), lo registra en `correos_enviados` y responde al backend.\n\n**Webhook:** POST `/webhook/triaje/respuesta` con header `x-webhook-secret` (credencial *Header Auth*).\nActiva el workflow para usar la URL de producción.",
+        "height": 200,
+        "width": 640,
+        "color": 4
+      },
+      "id": "c68d24a7-637e-4f4d-aedf-aa04bd0cc54c",
+      "name": "Nota 1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        -300
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "triaje/respuesta",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a4640f8a-3286-4694-99a9-f18ec44c9b47",
+      "name": "Webhook de entrada",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REEMPLAZAR",
+          "name": "Webhook Triaje Secret"
+        }
+      },
+      "webhookId": "02719e26-d51c-4db2-80e3-55ed50550f26"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "\nconst b = $input.item.json.body || {};\nconst err = (m) => ({ json: { valido: false, error: m } });\n\nconst ACCIONES = ['aprobar', 'rechazar', 'solicitar_informacion'];\nconst UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;\nconst EMAIL = /^[^\\s@<>\"]+@[^\\s@<>\"]+\\.[^\\s@<>\"]+$/;\nconst s = (v, max = 4000) => (typeof v === 'string' ? v.trim().slice(0, max) : '');\n\nif (!ACCIONES.includes(b.accion)) return err('accion no válida (aprobar | rechazar | solicitar_informacion)');\nif (!UUID.test(s(b.solicitud_id, 64))) return err('solicitud_id inválido');\nif (!EMAIL.test(s(b.destinatario, 320))) return err('destinatario inválido');\nif (!s(b.gmail_message_id, 200)) return err('gmail_message_id es obligatorio para responder en el mismo hilo');\nif (b.accion === 'rechazar' && s(b.motivo).length < 5) return err('El motivo del rechazo es obligatorio');\nif (b.accion === 'solicitar_informacion' && s(b.mensaje).length < 10) return err('El mensaje de solicitud de información es obligatorio');\n\nreturn {\n  json: {\n    valido: true,\n    accion: b.accion,\n    solicitud_id: s(b.solicitud_id, 64),\n    destinatario: s(b.destinatario, 320),\n    nombre_destinatario: s(b.nombre_destinatario, 200),\n    asunto_original: s(b.asunto_original, 500),\n    gmail_message_id: s(b.gmail_message_id, 200),\n    nombre_proyecto: s(b.nombre_proyecto, 300),\n    decidido_por: s(b.decidido_por, 200),\n    observaciones: s(b.observaciones),\n    motivo: s(b.motivo),\n    mensaje: s(b.mensaje),\n    campos_faltantes: Array.isArray(b.campos_faltantes) ? b.campos_faltantes.map((c) => s(c, 80)).filter(Boolean).slice(0, 30) : [],\n  },\n};\n"
+      },
+      "id": "a7c41c06-5c84-44f4-8728-8467a82bb01f",
+      "name": "Validar datos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "501432ef-5d02-4420-9d5c-e20bc6ef79f4",
+              "leftValue": "={{ $json.valido === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "677f74e8-0553-4954-90ec-4169fc440b54",
+      "name": "¿Datos válidos?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: false, error: $json.error }) }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "8dedad14-0836-4643-9a25-f065b7230683",
+      "name": "Responder 400",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        660,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "d9950290-92fd-436b-96b4-629aeecc48ae",
+                    "leftValue": "={{ $json.accion }}",
+                    "rightValue": "aprobar",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Aprobar"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "80f6f6d8-0265-4690-9739-b73d95a534a0",
+                    "leftValue": "={{ $json.accion }}",
+                    "rightValue": "rechazar",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Rechazar"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "657f5629-5364-46f2-b6ab-25290f1d9209",
+                    "leftValue": "={{ $json.accion }}",
+                    "rightValue": "solicitar_informacion",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Solicitar información"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "91149914-548f-4359-b7e0-a37b9934b02b",
+      "name": "Identificar decisión",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        660,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "\nconst esc = (t) => String(t ?? '')\n  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;')\n  .replace(/\\n/g, '<br>');\nconst envolver = (contenido) => `<div style=\"font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1f2937;line-height:1.55\">${contenido}\n<p style=\"margin-top:24px\">Cordialmente,<br><strong>Coordinación Académica</strong><br><span style=\"color:#6b7280;font-size:12px\">Este mensaje fue enviado desde el sistema de gestión de solicitudes.</span></p></div>`;\nconst d = $input.item.json;\nconst saludo = d.nombre_destinatario ? `Estimado/a ${esc(d.nombre_destinatario)},` : 'Estimado/a solicitante,';\nconst proyecto = d.nombre_proyecto ? ` “${esc(d.nombre_proyecto)}”` : '';\nconst base = { solicitud_id: d.solicitud_id, destinatario: d.destinatario, gmail_message_id: d.gmail_message_id, asunto_original: d.asunto_original };\n\nlet html = `<p>${saludo}</p><p>Nos complace informarle que su solicitud${proyecto} ha sido <strong style=\"color:#15803d\">APROBADA</strong>.</p>`;\nif (d.observaciones) html += `<p><strong>Observaciones de la coordinación:</strong><br>${esc(d.observaciones)}</p>`;\nhtml += '<p>Si necesita aclarar algún aspecto del proceso, puede responder directamente a este correo.</p>';\nreturn { json: { ...base, tipo: 'Aprobación', html: envolver(html) } };\n"
+      },
+      "id": "181feca2-97c3-4a7c-9f8f-efcacad457fe",
+      "name": "Redactar aprobación",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "\nconst esc = (t) => String(t ?? '')\n  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;')\n  .replace(/\\n/g, '<br>');\nconst envolver = (contenido) => `<div style=\"font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1f2937;line-height:1.55\">${contenido}\n<p style=\"margin-top:24px\">Cordialmente,<br><strong>Coordinación Académica</strong><br><span style=\"color:#6b7280;font-size:12px\">Este mensaje fue enviado desde el sistema de gestión de solicitudes.</span></p></div>`;\nconst d = $input.item.json;\nconst saludo = d.nombre_destinatario ? `Estimado/a ${esc(d.nombre_destinatario)},` : 'Estimado/a solicitante,';\nconst proyecto = d.nombre_proyecto ? ` “${esc(d.nombre_proyecto)}”` : '';\nconst base = { solicitud_id: d.solicitud_id, destinatario: d.destinatario, gmail_message_id: d.gmail_message_id, asunto_original: d.asunto_original };\n\nlet html = `<p>${saludo}</p><p>Después de revisar su solicitud${proyecto}, lamentamos informarle que no ha sido aprobada.</p>`;\nhtml += `<p><strong>Motivo:</strong><br>${esc(d.motivo)}</p>`;\nif (d.observaciones) html += `<p><strong>Observaciones adicionales:</strong><br>${esc(d.observaciones)}</p>`;\nhtml += '<p>Puede responder a este correo si desea ampliar la información o presentar una nueva propuesta.</p>';\nreturn { json: { ...base, tipo: 'Rechazo', html: envolver(html) } };\n"
+      },
+      "id": "9297ae26-695a-4eec-992c-3fb86826bd94",
+      "name": "Redactar rechazo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "\nconst esc = (t) => String(t ?? '')\n  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;')\n  .replace(/\\n/g, '<br>');\nconst envolver = (contenido) => `<div style=\"font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1f2937;line-height:1.55\">${contenido}\n<p style=\"margin-top:24px\">Cordialmente,<br><strong>Coordinación Académica</strong><br><span style=\"color:#6b7280;font-size:12px\">Este mensaje fue enviado desde el sistema de gestión de solicitudes.</span></p></div>`;\nconst d = $input.item.json;\nconst saludo = d.nombre_destinatario ? `Estimado/a ${esc(d.nombre_destinatario)},` : 'Estimado/a solicitante,';\nconst proyecto = d.nombre_proyecto ? ` “${esc(d.nombre_proyecto)}”` : '';\nconst base = { solicitud_id: d.solicitud_id, destinatario: d.destinatario, gmail_message_id: d.gmail_message_id, asunto_original: d.asunto_original };\n\nlet html = `<p>${saludo}</p><p>Para continuar con la revisión de su solicitud${proyecto} necesitamos información adicional.</p>`;\nif (d.campos_faltantes.length) {\n  html += '<p><strong>Datos que faltan:</strong></p><ul>' + d.campos_faltantes.map((c) => `<li>${esc(c)}</li>`).join('') + '</ul>';\n}\nhtml += `<p>${esc(d.mensaje)}</p><p>Por favor responda a este mismo correo con la información solicitada.</p>`;\nreturn { json: { ...base, tipo: 'Información', html: envolver(html) } };\n"
+      },
+      "id": "a1048d21-d456-420e-981b-8252f75864ab",
+      "name": "Redactar solicitud de información",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "reply",
+        "messageId": "={{ $json.gmail_message_id }}",
+        "emailType": "html",
+        "message": "={{ $json.html }}",
+        "options": {}
+      },
+      "id": "3364b578-e7b3-40fc-a337-d7232ad9414d",
+      "name": "Enviar respuesta (Gmail)",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1160,
+        -40
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "REEMPLAZAR",
+          "name": "Gmail account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "\n// Recupera el correo redactado en la rama que se ejecutó\nconst ramas = ['Redactar aprobación', 'Redactar rechazo', 'Redactar solicitud de información'];\nlet r = null;\nfor (const n of ramas) {\n  try { const it = $(n).item; if (it) { r = it.json; break; } } catch (e) { /* rama no ejecutada */ }\n}\nif (!r) throw new Error('No se pudo recuperar el correo redactado');\nconst enviado = $input.item.json;\nconst texto = r.html.replace(/<br\\s*\\/?>/gi, '\\n').replace(/<\\/(p|li)>/gi, '\\n').replace(/<[^>]+>/g, '').replace(/\\n{3,}/g, '\\n\\n').trim();\nreturn {\n  json: {\n    solicitud_id: r.solicitud_id,\n    destinatario: r.destinatario,\n    asunto: 'Re: ' + (r.asunto_original || ''),\n    cuerpo: texto,\n    tipo: r.tipo,\n    gmail_message_id: enviado.id || null,\n    estado_envio: 'Enviado',\n  },\n};\n"
+      },
+      "id": "b581ed69-3ade-47ad-ba64-80b3e64eac8a",
+      "name": "Preparar registro de envío",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1400,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "tableId": "correos_enviados",
+        "dataToSend": "autoMapInputData",
+        "inputsToIgnore": ""
+      },
+      "id": "75903889-8305-426f-9a2b-c0d9147a6488",
+      "name": "Registrar envío en Supabase",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1620,
+        -100
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "REEMPLAZAR",
+          "name": "Supabase account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true, tipo: $('Preparar registro de envío').item.json.tipo, gmail_message_id: $('Preparar registro de envío').item.json.gmail_message_id }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "8e4bf648-cc03-4afd-8bb5-792cde585250",
+      "name": "Responder OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1840,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "\nconst ramas = ['Redactar aprobación', 'Redactar rechazo', 'Redactar solicitud de información'];\nlet r = null;\nfor (const n of ramas) {\n  try { const it = $(n).item; if (it) { r = it.json; break; } } catch (e) { /* rama no ejecutada */ }\n}\nconst e = $input.item.json.error || {};\nconst mensaje = String(e.message || e.description || 'Error desconocido al enviar con Gmail').slice(0, 500);\nreturn {\n  json: {\n    solicitud_id: r.solicitud_id,\n    destinatario: r.destinatario,\n    asunto: 'Re: ' + (r.asunto_original || ''),\n    cuerpo: '(no enviado)',\n    tipo: r.tipo,\n    gmail_message_id: null,\n    estado_envio: 'Error',\n    error_detalle: mensaje,\n  },\n};\n"
+      },
+      "id": "e61656d8-52c9-4dc5-ae95-e9f37cb5d0f5",
+      "name": "Preparar registro de error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1400,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "tableId": "correos_enviados",
+        "dataToSend": "autoMapInputData",
+        "inputsToIgnore": ""
+      },
+      "id": "3e65c854-8ade-411c-a921-5707e6a07617",
+      "name": "Registrar error en Supabase",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1620,
+        140
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "REEMPLAZAR",
+          "name": "Supabase account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: false, error: 'Gmail no pudo enviar el correo: ' + $('Preparar registro de error').item.json.error_detalle }) }}",
+        "options": {
+          "responseCode": 502
+        }
+      },
+      "id": "90969566-e6b4-45e1-801d-cc29277d0948",
+      "name": "Responder error de envío",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1840,
+        140
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook de entrada": {
+      "main": [
+        [
+          {
+            "node": "Validar datos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar datos": {
+      "main": [
+        [
+          {
+            "node": "¿Datos válidos?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Datos válidos?": {
+      "main": [
+        [
+          {
+            "node": "Identificar decisión",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder 400",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Identificar decisión": {
+      "main": [
+        [
+          {
+            "node": "Redactar aprobación",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Redactar rechazo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Redactar solicitud de información",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redactar aprobación": {
+      "main": [
+        [
+          {
+            "node": "Enviar respuesta (Gmail)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redactar rechazo": {
+      "main": [
+        [
+          {
+            "node": "Enviar respuesta (Gmail)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redactar solicitud de información": {
+      "main": [
+        [
+          {
+            "node": "Enviar respuesta (Gmail)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar respuesta (Gmail)": {
+      "main": [
+        [
+          {
+            "node": "Preparar registro de envío",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Preparar registro de error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar registro de envío": {
+      "main": [
+        [
+          {
+            "node": "Registrar envío en Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar envío en Supabase": {
+      "main": [
+        [
+          {
+            "node": "Responder OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar registro de error": {
+      "main": [
+        [
+          {
+            "node": "Registrar error en Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar error en Supabase": {
+      "main": [
+        [
+          {
+            "node": "Responder error de envío",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "06cdc213-2ab2-42c6-b1de-a81d996e7893",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
